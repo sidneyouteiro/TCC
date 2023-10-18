@@ -62,7 +62,6 @@ class NCA:
         distances = np.array([euclidean(test_object, i) for i in self.X_train_transformed])
         top_k_closest_distances_indexs = np.argpartition(distances,k)[:k]
         sum_k_distances = np.sum(distances[top_k_closest_distances_indexs])
-        # usar o softmax
         for neighbor_index in top_k_closest_distances_indexs:
             class_probabilities[self.y_train[neighbor_index]] += distances[neighbor_index] / sum_k_distances
         return max(class_probabilities, key=class_probabilities.get)

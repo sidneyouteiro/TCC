@@ -28,7 +28,7 @@ def PSO(X, same_class_mask, transformation,max_iter=1000, cpu_count=None):
                                         dimensions = len(transformation),
                                         options=options)
     _, A = optimizer.optimize(obj_func, max_iter, same_class_mask=same_class_mask,
-                              X_train=X, verbose=True, n_processes=cpu_count)
+                              X_train=X, verbose=False, n_processes=cpu_count)
     return A
 
 
@@ -36,16 +36,17 @@ def Gradient(X, same_class_mask, transformation,max_iter=1000,cpu_count=None):
     import numpy as np
     from sklearn.metrics import pairwise_distances
     from sklearn.utils.extmath import softmax
-    #def alt_obj_func(x, same_class_mask, X_train):
-    #    from sklearn.metrics import pairwise_distances
-    #    from sklearn.utils.extmath import softmax
-    #    
-    #    X_embedded = np.dot(X_train,x.T)
-    #    p_ij = pairwise_distances(X_embedded, squared=True)
-    #    p_ij = softmax(-p_ij)
-    #    np.fill_diagonal(p_ij, 0.0)
-    #    
-    #    pi = same_class_mask * p_ij
+    
+    def alt_obj_func(x, same_class_mask, X_train):
+        from sklearn.metrics import pairwise_distances
+        from sklearn.utils.extmath import softmax
+        
+        X_embedded = np.dot(X_train,x.T)
+        p_ij = pairwise_distances(X_embedded, squared=True)
+        p_ij = softmax(-p_ij)
+        np.fill_diagonal(p_ij, 0.0)
+        
+        pi = same_class_mask * p_ij
         
     
     def obj_func_grad(x, same_class_mask, X_train):
@@ -98,6 +99,8 @@ def Gradient(X, same_class_mask, transformation,max_iter=1000,cpu_count=None):
     
     transformation = transformation.reshape(-1, X.shape[1])
     for it in range(max_iter):
+        if it % 200 == 0: 
+            print('a',end=' ')
         old_score = score(transformation, same_class_mask, X)
         new_transformation = obj_func_grad(transformation, same_class_mask, X)
         new_score = score(new_transformation, same_class_mask, X)
