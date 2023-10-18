@@ -1,9 +1,11 @@
 def PSO(X, same_class_mask, transformation,max_iter=1000, cpu_count=None):
+    import pickle
     import pyswarms as ps
     import numpy as np
     from sklearn.metrics import pairwise_distances
     from sklearn.utils.extmath import softmax
     
+    global obj_func
     def obj_func(x,same_class_mask,X_train):
         from sklearn.utils.extmath import softmax
         from sklearn.metrics import pairwise_distances
@@ -19,15 +21,14 @@ def PSO(X, same_class_mask, transformation,max_iter=1000, cpu_count=None):
         masked_p_ij = p_ij * same_class_mask
         p = np.sum(masked_p_ij, axis=1, keepdims=True)  
         loss = np.sum(p)
-
         return -1.0 * loss
-    
+
     options = {'c1': 0.5, 'c2': 0.3, 'w': 0.9} # parametros cognitivo, social e de inercia
     optimizer = ps.single.GlobalBestPSO(n_particles= 10,
                                         dimensions = len(transformation),
                                         options=options)
     _, A = optimizer.optimize(obj_func, max_iter, same_class_mask=same_class_mask,
-                              X_train=X, verbose=False, n_processes=cpu_count)
+                              X_train=X, verbose=True, n_processes=cpu_count)
     return A
 
 
@@ -47,7 +48,7 @@ def Gradient(X, same_class_mask, transformation,max_iter=1000,cpu_count=None):
     #    pi = same_class_mask * p_ij
         
     
-    def obj_func(x, same_class_mask, X_train):
+    def obj_func_grad(x, same_class_mask, X_train):
         from sklearn.metrics import pairwise_distances
         from sklearn.utils.extmath import softmax
         
@@ -98,7 +99,7 @@ def Gradient(X, same_class_mask, transformation,max_iter=1000,cpu_count=None):
     transformation = transformation.reshape(-1, X.shape[1])
     for it in range(max_iter):
         old_score = score(transformation, same_class_mask, X)
-        new_transformation = obj_func(transformation, same_class_mask, X)
+        new_transformation = obj_func_grad(transformation, same_class_mask, X)
         new_score = score(new_transformation, same_class_mask, X)
         if abs(old_score - new_score) < 0.001:
             break

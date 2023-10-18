@@ -16,13 +16,12 @@ class NCA:
         if isinstance(X, pd.core.frame.DataFrame):
             self.accepted_columns = X.columns.copy()
             X = np.asarray(X)
-        if isinstance(y, pd.core.frame.DataFrame):
-            self.accepted_columns = self.accepted_columns + y.columns.copy() if hasattr(self,'accepted_columns') else y.columns.copy() 
-            y = np.asarray(y)
             
-        y = LabelEncoder().fit_transform(y)            
+        #y = LabelEncoder().fit_transform(y)            
         t_train = time.time()
         # Compute a mask that stays fixed during optimization:
+        if isinstance(y,pd.Series):
+            y = np.asarray(y)
         same_class_mask = y[:, np.newaxis] == y[np.newaxis, :]
         # (n_samples, n_samples)
 
@@ -70,15 +69,15 @@ class NCA:
     
     def predict(self, X_test):
         try:
-            if type(X_test) == type(np.array([])):
+            if isinstance(X_test, (np.ndarray, np.generic)):
                 X_test_transformed = self.transform(X_test)
                 return np.array([self._classify_test_object(i) for i in X_test_transformed])
-            elif (type(X_test) == type(pd.DataFrame([]))) and (X_test.columns == self.accepted_columns):
+            elif (isinstance(X_test,pd.DataFrame)) and (X_test.columns == self.accepted_columns):
                 print('b')
                 X_test = np.asarray(X_test)
                 X_test_transformed = self.transform(X_test)
                 y_predict = [self._classify_test_object(i) for i in X_test_transformed]
-                return pd.DataFrame(y_predict,columns=self.accepted_columns[-1:])
+                return pd.Series(y_predict,name=self.accepted_columns[-1:])
             else:
                 raise RuntimeError('[Error] foi encontrado um problema ao lidar com {X_test}')
             
