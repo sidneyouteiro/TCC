@@ -1,7 +1,8 @@
-def PSO(X, same_class_mask, transformation,max_iter=1000, cpu_count=None):
+def PSO(X, same_class_mask, transformation,max_iter=1000, cpu_count=None, my_pso=False, swarm_size=10):
     import pickle
-    import pyswarms as ps
     import numpy as np
+    import pyswarms as ps
+    from .classGlobalBestPSO import GlobalBestPSO
     from sklearn.metrics import pairwise_distances
     from sklearn.utils.extmath import softmax
     
@@ -9,7 +10,7 @@ def PSO(X, same_class_mask, transformation,max_iter=1000, cpu_count=None):
     def obj_func(x,same_class_mask,X_train):
         from sklearn.utils.extmath import softmax
         from sklearn.metrics import pairwise_distances
-    
+        
         x = x.reshape(-1, X_train.shape[1])
         X_embedded = np.dot(X_train, x.T)  # (n_samples, n_components)
 
@@ -24,9 +25,15 @@ def PSO(X, same_class_mask, transformation,max_iter=1000, cpu_count=None):
         return -1.0 * loss
 
     options = {'c1': 0.5, 'c2': 0.3, 'w': 0.9} # parametros cognitivo, social e de inercia
-    optimizer = ps.single.GlobalBestPSO(n_particles= 10,
-                                        dimensions = len(transformation),
-                                        options=options)
+    GBPSO_options = {
+        'n_particles': swarm_size,
+        'dimensions': len(transformation),
+        'options':options
+    }
+    if my_pso:
+        optimizer = GlobalBestPSO(**GBPSO_options)
+    else:
+        optimizer = ps.single.GlobalBestPSO(**GBPSO_options)
     _, A = optimizer.optimize(obj_func, max_iter, same_class_mask=same_class_mask,
                               X_train=X, verbose=False, n_processes=cpu_count)
     return A
