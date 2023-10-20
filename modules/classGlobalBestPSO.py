@@ -46,25 +46,18 @@ class GlobalBestPSO(SwarmOptimizer):
         self, objective_func, iters, n_processes=None, verbose=True, **kwargs
     ):
         # Apply verbosity
-        if verbose:
-            log_level = logging.INFO
-        else:
-            log_level = logging.NOTSET
+        log_level = logging.INFO if verbose else logging.NOTSET
 
-        # Populate memory of the handlers
         self.bh.memory = self.swarm.position
         self.vh.memory = self.swarm.position
-
-        # Setup Pool of processes for parallel evaluation
-        #pool = None if n_processes is None else mp.Pool(n_processes)
 
         self.swarm.pbest_cost = np.full(self.swarm_size[0], np.inf)
         ftol_history = deque(maxlen=self.ftol_iter)
         
         if n_processes is None:
             n_processes = 1
-        
-        with Parallel(n_jobs=n_processes, backend="threading") as parallel:
+        batch_size = self.n_particles // n_processes
+        with Parallel(n_jobs=n_processes, backend="multiprocessing", verbose=50, batch_size=batch_size) as parallel:
             for i in self.rep.pbar(iters, self.name) if verbose else range(iters):
                 # Compute cost for current position and personal best
                 # fmt: off
@@ -95,44 +88,20 @@ class GlobalBestPSO(SwarmOptimizer):
                     if all(ftol_history):
                         break
                 # Perform options update
-                self.swarm.options = self.oh(
-                    self.options, iternow=i, itermax=iters
-                )
+                self.swarm.options = self.oh(self.options, iternow=i, itermax=iters)
                 # Perform velocity and position updates
-                self.swarm.velocity = self.top.compute_velocity(
-                    self.swarm, self.velocity_clamp, self.vh, self.bounds
-                )
-                self.swarm.position = self.top.compute_position(
-                    self.swarm, self.bounds, self.bh
-                )
+                self.swarm.velocity = self.top.compute_velocity(self.swarm, self.velocity_clamp, self.vh, self.bounds)
+                self.swarm.position = self.top.compute_position(self.swarm, self.bounds, self.bh)
             # Obtain the final best_cost and the final best_position
-            final_best_cost = self.swarm.best_cost.copy()
-            final_best_pos = self.swarm.pbest_pos[
-                self.swarm.pbest_cost.argmin()
-            ].copy()
+        final_best_cost = self.swarm.best_cost.copy()
+        final_best_pos = self.swarm.pbest_pos[
+            self.swarm.pbest_cost.argmin()
+        ].copy()
            
-            # Close Pool of Processes
-            #if n_processes is not None:
-            #    pool.close()
         return (final_best_cost, final_best_pos)
     
     
-def compute_objective_function(swarm, objective_func, pool, **kwargs):    
-    #if pool is None:
-    #    return objective_func(swarm.position, **kwargs)
-    #else:
-        #print('-'*50)
-        #print(f'swarm.position len = {len(swarm.position)}')
-        #print(f'swarm.position[4] len = {len(swarm.position[4])}')
-        
+def compute_objective_function(swarm, objective_func, pool, **kwargs):            
         new_obj_fun = partial(objective_func, **kwargs)
         results = pool(delayed(new_obj_fun)(i) for i in swarm.position)
-        
-        #results = pool.map(
-        #    partial(objective_func, **kwargs),
-        #    np.array_split(swarm.position, pool._processes), chunksize=5
-        #)
-        #print(results)
-        #print(f'results len = {len(results)}')
-        #print('-'*50)
         return results

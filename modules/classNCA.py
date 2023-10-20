@@ -3,7 +3,6 @@ import numpy as np
 import pandas as pd
 
 from scipy.spatial.distance import euclidean
-from sklearn.preprocessing import LabelEncoder
 
 class NCA:
     def __init__(self, optimization_func=None, max_iter=50, k=5, cpu_count=None, my_pso=False, swarm_size=10):
@@ -18,8 +17,7 @@ class NCA:
         if isinstance(X, pd.core.frame.DataFrame):
             self.accepted_columns = X.columns.copy()
             X = np.asarray(X)
-            
-        #y = LabelEncoder().fit_transform(y)            
+                     
         t_train = time.time()
         # Compute a mask that stays fixed during optimization:
         if isinstance(y,pd.Series):
