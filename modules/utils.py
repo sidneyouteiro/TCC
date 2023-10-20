@@ -1,15 +1,15 @@
 from scipy.spatial.distance import euclidean
-
 from sklearn.model_selection import KFold
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import accuracy_score, matthews_corrcoef
-
-from tqdm import tqdm
+import numpy as np
+import time
 
 def folds_run(X, y, model_class=None, model_options={}):
+    t_start = time.time()
     kf = KFold(n_splits=5)
     folds_results = {i:[] for i in ['acc','mcc']}
-    for (train_index, test_index) in tqdm(kf.split(X)):
+    for (train_index, test_index) in kf.split(X):
         scaler = StandardScaler()
         X_train = scaler.fit_transform(X.loc[train_index,:])
         X_test = scaler.transform(X.loc[test_index,:])
@@ -23,7 +23,8 @@ def folds_run(X, y, model_class=None, model_options={}):
         mcc = matthews_corrcoef(y_test,y_pred)
         folds_results['acc'].append(acc)
         folds_results['mcc'].append(mcc)
-    return folds_results
+    t_end = time.time()
+    return folds_results, t_end-t_start
 
 def classify_test_object(test_object, X_train_nca,y_train,k):
     class_probabilities = {i:0 for i in np.unique(y_train)}
@@ -35,9 +36,10 @@ def classify_test_object(test_object, X_train_nca,y_train,k):
     return max(class_probabilities, key=class_probabilities.get)
 
 def sklearn_folds_run(X, y, k, model_class=None, model_options={}):
+    t_start = time.time()
     kf = KFold(n_splits=5)
     folds_results = {i:[] for i in ['acc','mcc']}
-    for (train_index, test_index) in tqdm(kf.split(X)):
+    for (train_index, test_index) in kf.split(X):
         scaler = StandardScaler()
         X_train = scaler.fit_transform(X[train_index,:])
         X_test = scaler.transform(X[test_index,:])
@@ -53,4 +55,5 @@ def sklearn_folds_run(X, y, k, model_class=None, model_options={}):
         mcc = matthews_corrcoef(y_test,y_pred)
         folds_results['acc'].append(acc)
         folds_results['mcc'].append(mcc)
-    return folds_results
+    t_end = time.time()
+    return folds_results, t_end - t_start

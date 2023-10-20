@@ -5,12 +5,11 @@ import pandas as pd
 from scipy.spatial.distance import euclidean
 
 class NCA:
-    def __init__(self, optimization_func=None, max_iter=50, k=5, cpu_count=None, my_pso=False, swarm_size=10):
+    def __init__(self, optimization_func=None, max_iter=50, k=5, cpu_count=None, swarm_size=10):
         self.optimization_func = optimization_func
         self.max_iter = max_iter
         self.k = k
         self.cpu_count = cpu_count
-        self.my_pso = my_pso
         self.swarm_size = swarm_size
 
     def fit(self, X, y):
@@ -34,7 +33,6 @@ class NCA:
             'transformation': transformation,
             'max_iter': self.max_iter,
             'cpu_count': self.cpu_count,
-            'my_pso': self.my_pso,
             'swarm_size': self.swarm_size
         }
 

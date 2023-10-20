@@ -1,28 +1,28 @@
-def PSO(X, same_class_mask, transformation,max_iter=1000, cpu_count=None, my_pso=False, swarm_size=10):
-    import pickle
-    import numpy as np
-    import pyswarms as ps
-    from .classGlobalBestPSO import GlobalBestPSO
+def PSO(X, same_class_mask, transformation,max_iter=1000, cpu_count=None, swarm_size=10):
     from sklearn.metrics import pairwise_distances
     from sklearn.utils.extmath import softmax
+    from numpy import fill_diagonal, dot, mean
+    import pyswarms as ps
+    import pickle
+    import time
     
     global obj_func
-    def obj_func(x,same_class_mask,X_train):
-        from sklearn.utils.extmath import softmax
-        from sklearn.metrics import pairwise_distances
-        
-        x = x.reshape(-1, X_train.shape[1])
-        X_embedded = np.dot(X_train, x.T)  # (n_samples, n_components)
+    def obj_func(x, same_class_mask, X_train):        
+        results = []
+        for i in x:
+            x = x.reshape(-1, X_train.shape[1])
+            X_embedded = dot(X_train, x.T)  # (n_samples, n_components)
 
-        # Compute softmax distances
-        p_ij = pairwise_distances(X_embedded, squared=True)
-        p_ij = softmax(-p_ij)  # (n_samples, n_samples)
-        np.fill_diagonal(p_ij, 0.0)
+            # Compute softmax distances
+            p_ij = pairwise_distances(X_embedded, squared=True)
+            p_ij = softmax(-p_ij)  # (n_samples, n_samples)
+            fill_diagonal(p_ij, 0.0)
         
-        masked_p_ij = p_ij * same_class_mask
-        p = np.sum(masked_p_ij, axis=1, keepdims=True)  
-        loss = np.sum(p)
-        return -1.0 * loss
+            masked_p_ij = p_ij * same_class_mask
+            p = masked_p_ij.sum(axis=1, keepdims=True)  
+            loss = -1.0 * p.sum()
+            results.append(loss)
+        return results
 
     options = {'c1': 0.5, 'c2': 0.3, 'w': 0.9} # parametros cognitivo, social e de inercia
     GBPSO_options = {
@@ -30,12 +30,12 @@ def PSO(X, same_class_mask, transformation,max_iter=1000, cpu_count=None, my_pso
         'dimensions': len(transformation),
         'options':options
     }
-    if my_pso:
-        optimizer = GlobalBestPSO(**GBPSO_options)
-    else:
-        optimizer = ps.single.GlobalBestPSO(**GBPSO_options)
+    
+    optimizer = ps.single.GlobalBestPSO(**GBPSO_options)
+    
     _, A = optimizer.optimize(obj_func, max_iter, same_class_mask=same_class_mask,
                               X_train=X, verbose=False, n_processes=cpu_count)
+    
     return A
 
 
