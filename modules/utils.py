@@ -95,34 +95,37 @@ def knn_run(X,y, K_Folds=5, model_class=None, model_options={}):
 def process_results(results, K_Folds, results_name):
     columns = ['Model','Run Index','ACC','MCC','Partition Time']
     processed_results = {i:[] for i in columns}
-    for evaluated_run in results:
+    for run_index, evaluated_run in enumerate(results):
         for partition_index in range(K_Folds):
             get_data = lambda x: evaluated_run[results_name][x][partition_index]
             
-            acc = get_data('acc')
-            mcc = get_data('mcc')
-            partition_time = get_data('partition_time')
+            processed_results['Model'].append( results_name )
+            processed_results['ACC'].append( get_data('acc') )
+            processed_results['MCC'].append( get_data('mcc') )
+            processed_results['Partition Time'].append( get_data('partition_time') )
+            
+            processed_results['Run Index'].append( run_index + 1 )
         
     return processed_results
 
-def run_experiments(models_options, n_runs = 30):
-    #nca_pso_results = [nca_pso_run(**models_options['nca_pso_options']) for _ in trange(n_runs,desc='NCA+PSO')]
-    #nca_gradient_results = [nca_grad_run(**models_options['nca_gradient_options']) for _ in trange(n_runs,desc='NCA+Gradient')]
-    knn_results = [knn_run(**models_options['knn_options']) for _ in trange(n_runs,desc='KNN')]
+def run_experiments(exp_config, n_runs = 30):
+    K_Folds = exp_config['K_Folds']
+    kwargs = { 'iterable': n_runs, 'ascii': True}
+    results_list = []
     
-    print(knn_results)
+    if 'nca_pso' in exp_config:
+        nca_pso = [nca_pso_run(**exp_config['nca_pso']) for _ in trange(n_runs, ascii=True, desc='NCA+PSO')]
+        nca_pso = process_results(nca_pso, K_Folds, 'NCA+PSO')
+        results_list.append(pd.DataFrame(nca_pso))
+    if 'nca_gradient' in exp_config:
+        nca_gradient = [nca_grad_run(**exp_config['nca_gradient']) for _ in trange(n_runs, ascii=True, desc='NCA+Gradient')]
+        nca_gradient = process_results(nca_gradient, K_Folds, 'NCA+Gradient')
+        results_list.append(pd.DataFrame(nca_gradient))
+    if 'knn' in exp_config:
+        knn = [knn_run(**exp_config['knn']) for _ in trange(n_runs, ascii=True, desc='KNN')]
+        knn = process_results(knn, K_Folds, 'KNN')
+        results_list.append(pd.DataFrame(knn))
     
-    #K_Folds = models_options['K_Folds']
-    #nca_pso_processed_results = process_results(nca_pso_results, K_Folds, 'NCA+PSO')
-    #nca_gradient_processed_results = process_results(nca_gradient_results, K_Folds, 'NCA+Gradient')
-    #knn_processed_results = process_results(knn_results, K_Folds, 'KNN')
+    df = pd.concat(results_list)
     
-    #df = pd.concat(
-    #    [
-    #        pd.DataFrame(nca_pso_processed_results),
-    #        pd.DataFrame(nca_gradient_processed_results),
-    #        pd.DataFrame(knn_processed_results),
-    #    ]
-    #).set_index('Model')
-    
-    #return df
+    return df
