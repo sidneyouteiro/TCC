@@ -129,3 +129,11 @@ def run_experiments(exp_config, n_runs = 30):
     df = pd.concat(results_list)
     
     return df
+
+def under_sampling(dataset, sample_size, objective_column):
+    proportion = dataset[objective_column].value_counts(normalize=True)
+    proportion = (proportion * sample_size).astype(int)
+    df_group = dataset.groupby(by=objective_column)
+    df_sampled = df_group.apply(
+        lambda x: x.sample(n=proportion[x.iloc[0][objective_column]]))
+    return df_sampled.reset_index(drop=True)
