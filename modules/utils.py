@@ -2,7 +2,13 @@ from scipy.spatial.distance import euclidean
 from sklearn.model_selection import KFold
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.metrics import accuracy_score, matthews_corrcoef
+from email.mime.application import MIMEApplication
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from os.path import isfile, join
+from os import listdir
 from tqdm import trange
+import smtplib
 import pandas as pd
 import numpy as np
 import time
@@ -136,4 +142,39 @@ def under_sampling(dataset, sample_size, objective_column):
     df_group = dataset.groupby(by=objective_column)
     df_sampled = df_group.apply(
         lambda x: x.sample(n=proportion[x.iloc[0][objective_column]]))
-    return df_sampled.reset_index(drop=True)
+    df_sampled = df_sampled.reset_index(drop=True)
+    csv_name = f'dataset/Data_for_UCI_named_{sample_size}.csv'
+    df_sampled.to_csv(csv_name, index=False)
+
+def send_email(creds, desc):
+    remetente, senha = creds['login'], creds['senha']
+    assunto = 'Experimento Finalizado'
+    mensagem = f'''Esse é um e-mail automático enviado para alertar que a execução do experimento foi finalizada no LC3 e enviar os resultados encontrados.
+    O experimento realizado foi {desc}'''
+    
+    msg = MIMEMultipart()
+    msg['From'], msg['To'], msg['Subject'] = remetente, destinatario, assunto
+    msg.attach(MIMEText(mensagem, 'plain'))
+    
+    csv_files = [f for f in listdir('results') if isfile(join('./results',f))]
+    
+    for file in csv_files:
+        with open(file,'rb') as f:
+            part = MIMEApplication(f.read())
+            part.add_header('Content-Disposition',f'attachment; filename="{arquivo}"')
+            msg.attach(part)
+            
+    smtp_server, smtp_port = 'smtp.gmail.com', 587
+    
+    try:
+        server = smtplib.SMTP(smtp_server, smtp_port)
+        server.starttls()
+        server.login(remetente, senha)
+        server.sendmail(rementente, destinatario, msg.as_string())
+        print('Email com anexos enviados com sucesso!')
+        
+    except Exception as err:
+        print(f'Ocorreu um erro ao enviar o email: {str(err)}')
+        
+    finally:
+        server.quit()
