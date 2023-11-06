@@ -12,6 +12,7 @@ import smtplib
 import pandas as pd
 import numpy as np
 import time
+import math
 
 def nca_pso_run(X, y, K_Folds=5, model_class=None, model_options={}):
     kf = KFold(n_splits=K_Folds)
@@ -98,6 +99,32 @@ def knn_run(X,y, K_Folds=5, model_class=None, model_options={}):
     
     return { 'KNN' : folds_results }
 
+def tree_run(X, y, K_Folds=5, model_class=None, model_options={}):
+    kf = KFold(n_splits=K_Folds)
+    folds_results = {i:[] for i in ['acc','mcc','partition_time']}
+    for (train_index, test_index) in kf.split(X):
+        t_start = time.time()
+        scaler, encoder = StandardScaler(), LabelEncoder()
+        X_train = scaler.fit_transform(X[train_index,:])
+        X_test = scaler.transform(X[test_index,:])
+        
+        y_train = encoder.fit_transform(y[train_index].copy())
+        y_test = encoder.transform(y[test_index].copy())
+        
+        model = model_class(**model_options)
+        model.fit(X_train,y_train)
+        y_pred = model.predict(X_test)
+        
+        acc = accuracy_score(y_test,y_pred)
+        mcc = matthews_corrcoef(y_test,y_pred)
+        t_end = time.time()
+        
+        folds_results['acc'].append(acc)
+        folds_results['mcc'].append(mcc)
+        folds_results['partition_time'].append(t_end - t_start)
+    
+    return { 'DecisionTree' : folds_results }
+
 def process_results(results, K_Folds, results_name):
     columns = ['Model','Run Index','ACC','MCC','Partition Time']
     processed_results = {i:[] for i in columns}
@@ -131,6 +158,10 @@ def run_experiments(exp_config, n_runs = 30):
         knn = [knn_run(**exp_config['knn']) for _ in trange(n_runs, ascii=True, desc='KNN')]
         knn = process_results(knn, K_Folds, 'KNN')
         results_list.append(pd.DataFrame(knn))
+    if 'DecisionTree' in exp_config:
+        tree = [tree_run(**exp_config['DecisionTree']) for _ in trange(n_runs, ascii=True, desc='DecisionTree')]
+        tree = process_results(tree, K_Folds, 'DecisionTree')
+        results_list.append(pd.DataFrame(tree))
     
     df = pd.concat(results_list)
     
@@ -145,6 +176,33 @@ def under_sampling(dataset, sample_size, objective_column):
     df_sampled = df_sampled.reset_index(drop=True)
     csv_name = f'dataset/Data_for_UCI_named_{sample_size}.csv'
     df_sampled.to_csv(csv_name, index=False)
+
+def table_data():
+    onlyfiles = sorted([f for f in listdir('results') if isfile(join('./results', f))])
+    csvs = []
+    
+    for file in onlyfiles:
+        name, _ = file.split('.csv')
+        _, population_size, generations = name.split('_')
+        aux_df = pd.read_csv(f'results/{file}')
+        aux_df['Population Size'] = int(population_size)
+        aux_df['Generations Count'] = int(generations)
+        csvs.append(aux_df)
+    
+    df = pd.concat(csvs).reset_index(drop=True)
+
+    metric_columns = ['ACC', 'MCC', 'Partition Time']
+    results = df.groupby(
+        by=['Model','Generations Count', 'Population Size']
+    )[metric_columns].agg(['mean','std','count'])
+
+    for i in metric_columns:
+        results.loc[:,(i,'ci95_upper')] = results.loc[:,(i,'mean')] + 1.96 * results.loc[:,(i,'std')] / results.loc[:,(i,'count')].apply(math.sqrt) 
+        results.loc[:,(i,'ci95_lower')] = results.loc[:,(i,'mean')] - 1.96 * results.loc[:,(i,'std')] / results.loc[:,(i,'count')].apply(math.sqrt)
+        results = results.drop((i,'count'), axis=1)
+
+    results = results.reindex(sorted(results.columns), axis=1)
+    return results
 
 def send_email(creds, desc):
     remetente, senha = creds['login'], creds['senha']
